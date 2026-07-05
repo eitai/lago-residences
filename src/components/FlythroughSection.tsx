@@ -6,6 +6,9 @@ import {
   PIN_HEIGHT_VH,
   SCRUB_WEIGHT,
   USE_DUMMY_FRAMES,
+  PUSHIN_START,
+  PUSHIN_SCALE,
+  PUSHIN_ORIGIN,
 } from '../lib/flythroughConfig'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 import { scrollToId } from '../lib/smoothScroll'
@@ -52,8 +55,8 @@ const BEATS: Beat[] = [
     eyebrow: 'הפנטהאוז',
     title: 'מרפסת 120 מ״ר מעל האגם',
     lines: ['האור עובר יום ← דמדומים', 'אורות העיר והאגם נדלקים'],
-    start: 0.72,
-    end: 0.9,
+    start: 0.68,
+    end: 0.85,
     position: 'right-[8vw] bottom-[26vh] text-right',
   },
 ]
@@ -81,6 +84,8 @@ export default function FlythroughSection() {
   const ctaRef = useRef<HTMLDivElement | null>(null)
   const duskRef = useRef<HTMLDivElement | null>(null)
   const progressRef = useRef<HTMLDivElement | null>(null)
+  const pushVignetteRef = useRef<HTMLDivElement | null>(null)
+  const finaleRef = useRef<HTMLDivElement | null>(null)
 
   // Direct DOM writes on every scrub tick — no React re-renders.
   const handleProgress = useCallback((p: number) => {
@@ -101,6 +106,18 @@ export default function FlythroughSection() {
     if (duskRef.current) {
       // Day → dusk: a warm-then-deep scrim that ramps in over the climb.
       duskRef.current.style.opacity = (smoothstep(0.55, 1, p) * 0.8).toFixed(3)
+    }
+    // ---- End push-in beats: vignette deepens + finale caption settles ------
+    // `push` runs 0→1 across the push-in window, mirroring the canvas scale.
+    const push = smoothstep(PUSHIN_START, 0.99, p)
+    if (pushVignetteRef.current) {
+      // Dark-glass vignette closing in on the penthouse as we push toward it.
+      pushVignetteRef.current.style.opacity = push.toFixed(3)
+    }
+    if (finaleRef.current) {
+      const o = smoothstep(PUSHIN_START + 0.02, 0.97, p)
+      finaleRef.current.style.opacity = o.toFixed(3)
+      finaleRef.current.style.transform = `translateY(${((1 - o) * 18).toFixed(2)}px)`
     }
     if (progressRef.current) {
       progressRef.current.style.transform = `scaleX(${p.toFixed(4)})`
@@ -152,6 +169,9 @@ export default function FlythroughSection() {
         heightVh={PIN_HEIGHT_VH}
         scrub={SCRUB_WEIGHT}
         onProgress={handleProgress}
+        pushInStart={PUSHIN_START}
+        pushInScale={PUSHIN_SCALE}
+        pushInOrigin={PUSHIN_ORIGIN}
       >
         {/* legibility scrim + day→dusk deepening */}
         <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-ink/30" />
@@ -163,6 +183,17 @@ export default function FlythroughSection() {
             opacity: 0,
             background:
               'linear-gradient(180deg, rgba(20,30,45,0.35) 0%, rgba(10,20,22,0.15) 40%, rgba(200,120,60,0.10) 78%, rgba(6,16,15,0.55) 100%)',
+          }}
+        />
+        {/* push-in vignette — dark glass closing in on the penthouse crown */}
+        <div
+          ref={pushVignetteRef}
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={{
+            opacity: 0,
+            background:
+              'radial-gradient(125% 95% at 50% 20%, transparent 32%, rgba(6,14,16,0.34) 68%, rgba(4,10,11,0.82) 100%)',
           }}
         />
 
@@ -199,6 +230,19 @@ export default function FlythroughSection() {
             <div className="mt-5 h-px w-20 bg-gold/60" />
           </div>
         ))}
+
+        {/* finale caption — settles in as the push-in reaches the penthouse */}
+        <div
+          ref={finaleRef}
+          className="absolute inset-x-0 top-[38vh] text-center will-change-transform"
+          style={{ opacity: 0 }}
+        >
+          <p className="eyebrow-he">הפנטהאוז</p>
+          <h2 className="mx-auto mt-4 max-w-[86vw] font-display text-[clamp(2rem,5.2vw,4rem)] font-light leading-tight text-sand">
+            הבית שלך מעל הכנרת
+          </h2>
+          <div className="mx-auto mt-6 h-px w-24 bg-gold/70" />
+        </div>
 
         {/* final CTA cue */}
         <div

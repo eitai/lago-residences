@@ -45,13 +45,38 @@ export const frameUrls = (): string[] =>
   Array.from({ length: FRAME_COUNT }, (_, i) => asset(framePath(i)))
 
 /* ---- Pinned-stage tuning (PRD §4: ~15–25px scroll / frame) ------------- *
- * heightVh drives total pin length. At 125 frames over ~275vh ≈ 22px/frame
- * on a 1080-tall viewport — inside the target band, so the scrub never steps.
+ * heightVh drives total pin length. Frames scrub across [0 .. PUSHIN_START]
+ * of the pin, then hold on the last frame while the coded push-in owns the
+ * final stretch. At 126 frames over ~0.85·350vh ≈ 297vh (≈22px/frame on a
+ * 1080-tall viewport) the scrub stays inside the target band and never steps.
  */
-export const PIN_HEIGHT_VH = 300
+export const PIN_HEIGHT_VH = 350
 
 /** Numeric scrub weight (never `true`) — heavy, eased glide. */
 export const SCRUB_WEIGHT = 1.1
+
+/* ---- End push-in — a coded cinematic move AFTER the last frame ---------- *
+ * The Kling take never quite "enters" the tower, so once the frame scrub
+ * completes we ease a GPU CSS scale on the canvas toward the penthouse crown
+ * of the final frame. Frames finish at PUSHIN_START; [PUSHIN_START .. 1] is
+ * pure push-in. Disabled under prefers-reduced-motion (see FrameSequenceScrub).
+ */
+
+/** Scrub progress at which the frames complete; the push-in owns [start,1]. */
+export const PUSHIN_START = 0.85
+
+/**
+ * Peak canvas scale at full push-in. Capped so the 1280×720 frame keeps its
+ * premium feel (soft depth, not pixel-crunch) even on large displays.
+ */
+export const PUSHIN_SCALE = 1.5
+
+/**
+ * transform-origin aimed at the penthouse crown of frame_0126 — the glowing
+ * cantilevered penthouse box sits ~50% across and ~20% down from the top, so
+ * the push-in settles into "the home above the Kinneret".
+ */
+export const PUSHIN_ORIGIN = '50% 20%'
 
 /**
  * Poster still for the Hero. In placeholder mode this is a dedicated
