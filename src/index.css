@@ -1,0 +1,212 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/*  Self-hosted Hebrew fonts (variable, hebrew + latin subsets).        */
+/*  Paths carry the GitHub-Pages base explicitly so they resolve both   */
+/*  in dev (server runs under /lago-residences/) and in the built site. */
+/* ------------------------------------------------------------------ */
+
+@font-face {
+  font-family: "Frank Ruhl Libre";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/lago-residences/fonts/frankruhl-hebrew.woff2") format("woff2");
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC,
+    U+FB1D-FB4F;
+}
+@font-face {
+  font-family: "Frank Ruhl Libre";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/lago-residences/fonts/frankruhl-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+2122, U+2191,
+    U+2193;
+}
+@font-face {
+  font-family: "Assistant";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/lago-residences/fonts/assistant-hebrew.woff2") format("woff2");
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC,
+    U+FB1D-FB4F;
+}
+@font-face {
+  font-family: "Assistant";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/lago-residences/fonts/assistant-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+2122, U+2191,
+    U+2193;
+}
+
+/* ------------------------------------------------------------------ */
+/*  LAGO design tokens                                                  */
+/* ------------------------------------------------------------------ */
+
+@theme {
+  --color-bg: #0a1416;
+  --color-ink: #06100f;
+  --color-sand: #ede6d6;
+  --color-gold: #c8a86a;
+  --color-lake: #4f9199;
+  --color-hairline: rgb(237 230 214 / 0.12);
+
+  --font-display: "Frank Ruhl Libre", "Georgia", serif;
+  --font-sans: "Assistant", "Segoe UI", system-ui, sans-serif;
+}
+
+:root {
+  --lago-bg: #0a1416;
+  --lago-ink: #06100f;
+  --lago-sand: #ede6d6;
+  --lago-gold: #c8a86a;
+  --lago-lake: #4f9199;
+  --lago-hairline: rgb(237 230 214 / 0.12);
+
+  --ease-luxe: cubic-bezier(0.19, 1, 0.22, 1);
+  --dur-slow: 1.2s;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Base                                                               */
+/* ------------------------------------------------------------------ */
+
+html {
+  background: var(--lago-bg);
+  color-scheme: dark;
+  /* `clip` (not `hidden`) — overflow:hidden on html/body breaks
+     GSAP ScrollTrigger pinning. */
+  overflow-x: clip;
+}
+
+body {
+  margin: 0;
+  background: var(--lago-bg);
+  color: var(--lago-sand);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--lago-gold);
+  color: var(--lago-ink);
+}
+
+/* Keyboard focus — a quiet gold ring, clearly visible on the dark water. */
+:focus-visible {
+  outline: 1px solid var(--lago-gold);
+  outline-offset: 4px;
+}
+
+[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
+/* Skip link — hidden until keyboard-focused (RTL → anchored right). */
+.skip-link {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.5rem;
+  z-index: 200;
+  padding: 0.75rem 1.5rem;
+  background: var(--lago-ink);
+  border: 1px solid var(--lago-gold);
+  color: var(--lago-sand);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-decoration: none;
+  transform: translateY(calc(-100% - 2rem));
+}
+.skip-link:focus-visible {
+  transform: none;
+  outline-offset: 2px;
+}
+
+/* Lenis smooth-scroll recommended styles */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reusable luxury primitives                                         */
+/* ------------------------------------------------------------------ */
+
+/* Small uppercase Latin / spaced Hebrew label — gold, wide tracking */
+.label-luxe {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--lago-gold);
+}
+
+/* Hebrew eyebrow — no uppercase (Hebrew has no case), gentler tracking */
+.eyebrow-he {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  color: var(--lago-gold);
+}
+
+/* Huge thin numeral / figure */
+.numeral-luxe {
+  font-family: var(--font-sans);
+  font-weight: 300;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--lago-sand);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.hairline {
+  border-color: var(--lago-hairline);
+}
+
+/* Faint film grain overlay hook (applied on cinematic sections) */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reduced motion                                                     */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
