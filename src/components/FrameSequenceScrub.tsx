@@ -32,26 +32,11 @@ export interface FrameSequenceScrubProps {
   onProgress?: (progress: number, frameIndex: number) => void
   /** Frame shown statically under prefers-reduced-motion (default: first). */
   reducedMotionFrame?: number
-  /**
-   * Optional coded push-in AFTER the frames finish. When set, the frame scrub
-   * completes at progress `pushInStart` (frames hold on the last one past it)
-   * and [pushInStart .. 1] eases a GPU CSS scale on the canvas from 1 →
-   * `pushInScale` around `pushInOrigin`. Ignored under reduced motion.
-   */
-  pushInStart?: number
-  pushInScale?: number
-  pushInOrigin?: string
   className?: string
 }
 
 const MAX_CONCURRENT_LOADS = 6
 const KEYFRAME_STRIDE = 8
-
-/** Eased in-and-out (cubic) — smooth departure from the held frame + settle. */
-function easeInOutCubic(t: number): number {
-  const x = Math.min(1, Math.max(0, t))
-  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2
-}
 
 /**
  * Scroll-scrubbed image sequence on a full-viewport canvas.
@@ -70,9 +55,6 @@ export default function FrameSequenceScrub({
   children,
   onProgress,
   reducedMotionFrame,
-  pushInStart,
-  pushInScale = 1.5,
-  pushInOrigin = '50% 20%',
   className,
 }: FrameSequenceScrubProps) {
   const reducedMotion = usePrefersReducedMotion()
@@ -89,7 +71,6 @@ export default function FrameSequenceScrub({
   const activeLoadsRef = useRef(0)
   const currentIndexRef = useRef(0)
   const lastDrawnRef = useRef(-1)
-  const lastScaleRef = useRef(1)
 
   const onProgressRef = useRef(onProgress)
   onProgressRef.current = onProgress
@@ -309,38 +290,21 @@ export default function FrameSequenceScrub({
         },
         onUpdate: () => {
           const p = state.p
-          // Push-in remap: frames complete at pushInStart, then hold on the
-          // last frame while the CSS scale takes over. Without it, frameP === p.
-          const usePush = pushInStart != null && pushInStart > 0 && pushInStart < 1
-          const frameP = usePush ? Math.min(1, p / pushInStart) : p
+          // Pure frame playback across the whole pin — scroll progress maps
+          // straight to a frame index (the old coded push-in tail is gone).
           const index = Math.min(
             frameCount - 1,
-            Math.max(0, Math.round(frameP * (frameCount - 1))),
+            Math.max(0, Math.round(p * (frameCount - 1))),
           )
           if (index !== currentIndexRef.current) {
             currentIndexRef.current = index
             prioritize(index)
             drawFrame(index)
           }
-          if (usePush) {
-            // Eased GPU push-in toward the penthouse crown (transform-origin set
-            // on the canvas element). Cheap DOM write, skipped when unchanged.
-            const t = (p - pushInStart) / (1 - pushInStart)
-            const scale = 1 + easeInOutCubic(t) * (pushInScale - 1)
-            if (Math.abs(scale - lastScaleRef.current) > 0.0004) {
-              lastScaleRef.current = scale
-              const canvas = canvasRef.current
-              if (canvas) canvas.style.transform = `scale(${scale.toFixed(4)})`
-            }
-          }
           onProgressRef.current?.(p, index)
         },
       })
     }, root)
-
-    // Start un-scaled every (re)init so a refresh can't strand a stale zoom.
-    lastScaleRef.current = 1
-    if (canvasRef.current) canvasRef.current.style.transform = 'scale(1)'
 
     drawFrame(0, true)
     onProgressRef.current?.(0, 0)
@@ -354,8 +318,6 @@ export default function FrameSequenceScrub({
     staticIndex,
     drawFrame,
     prioritize,
-    pushInStart,
-    pushInScale,
   ])
 
   const rootStyle: CSSProperties = reducedMotion
@@ -376,11 +338,6 @@ export default function FrameSequenceScrub({
           ref={canvasRef}
           className="absolute inset-0 h-full w-full"
           aria-hidden="true"
-          style={
-            pushInStart != null
-              ? { transformOrigin: pushInOrigin, willChange: 'transform' }
-              : undefined
-          }
         />
         {/* HTML overlays above the canvas */}
         <div className="pointer-events-none absolute inset-0">{children}</div>

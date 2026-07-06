@@ -6,9 +6,6 @@ import {
   PIN_HEIGHT_VH,
   SCRUB_WEIGHT,
   USE_DUMMY_FRAMES,
-  PUSHIN_START,
-  PUSHIN_SCALE,
-  PUSHIN_ORIGIN,
 } from '../lib/flythroughConfig'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 import { scrollToId } from '../lib/smoothScroll'
@@ -31,6 +28,13 @@ interface Beat {
   position: string
 }
 
+/*
+ * The pin now covers all 302 frames (was 126 + a coded push-in). The three
+ * original beats belong to the drone flythrough (frames 1–126 ≈ progress
+ * [0 .. 126/302 ≈ 0.42]), so their windows were compressed proportionally
+ * into that opening ~42% of the scrub. The two interior captions below
+ * (INTERIOR_BEATS) cover the door crossing and the orbit.
+ */
 const BEATS: Beat[] = [
   {
     id: 'approach',
@@ -38,7 +42,7 @@ const BEATS: Beat[] = [
     title: 'על קו המים של הכנרת',
     lines: ['רחיפה נמוכה מעל האגם בשעת זהב', '300 מ׳ מהטיילת'],
     start: 0.02,
-    end: 0.36,
+    end: 0.15,
     position: 'right-[8vw] top-[20vh] text-right',
   },
   {
@@ -46,8 +50,8 @@ const BEATS: Beat[] = [
     eyebrow: 'החזית',
     title: '24 קומות · 89 דירות',
     lines: ['חזית זכוכית בעיצוב אדריכלי', 'מרפסות פונות מערב — שקיעה כל ערב'],
-    start: 0.44,
-    end: 0.66,
+    start: 0.19,
+    end: 0.3,
     position: 'left-[8vw] top-[24vh] text-left',
   },
   {
@@ -55,10 +59,22 @@ const BEATS: Beat[] = [
     eyebrow: 'הפנטהאוז',
     title: 'מרפסת 120 מ״ר מעל האגם',
     lines: ['האור עובר יום ← דמדומים', 'אורות העיר והאגם נדלקים'],
-    start: 0.68,
-    end: 0.85,
+    start: 0.31,
+    end: 0.42,
     position: 'right-[8vw] bottom-[26vh] text-right',
   },
+]
+
+/*
+ * Interior captions — centered, using the same styling as the old finale
+ * caption (large display type + gold hairline). Driven directly in
+ * handleProgress. Windows:
+ *   door  → frames ~127–199 (progress ~0.47–0.64) as we cross the glass doors
+ *   orbit → frames ~204–302 (fades in ~0.70 and holds to the end) around the sofa
+ */
+const INTERIOR_BEATS = [
+  { id: 'door', eyebrow: 'הכניסה', title: 'דרך דלתות הזכוכית — הביתה.' },
+  { id: 'orbit', eyebrow: 'הפנטהאוז', title: 'הבית שלך מעל הכנרת' },
 ]
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
@@ -84,7 +100,7 @@ export default function FlythroughSection() {
   const ctaRef = useRef<HTMLDivElement | null>(null)
   const duskRef = useRef<HTMLDivElement | null>(null)
   const progressRef = useRef<HTMLDivElement | null>(null)
-  const pushVignetteRef = useRef<HTMLDivElement | null>(null)
+  const doorRef = useRef<HTMLDivElement | null>(null)
   const finaleRef = useRef<HTMLDivElement | null>(null)
 
   // Direct DOM writes on every scrub tick — no React re-renders.
@@ -107,15 +123,16 @@ export default function FlythroughSection() {
       // Day → dusk: a warm-then-deep scrim that ramps in over the climb.
       duskRef.current.style.opacity = (smoothstep(0.55, 1, p) * 0.8).toFixed(3)
     }
-    // ---- End push-in beats: vignette deepens + finale caption settles ------
-    // `push` runs 0→1 across the push-in window, mirroring the canvas scale.
-    const push = smoothstep(PUSHIN_START, 0.99, p)
-    if (pushVignetteRef.current) {
-      // Dark-glass vignette closing in on the penthouse as we push toward it.
-      pushVignetteRef.current.style.opacity = push.toFixed(3)
+    // ---- Interior captions (centered, finale styling) ----------------------
+    if (doorRef.current) {
+      // Door crossing — fades through the glass-door segment, then out.
+      const o = beatOpacity(p, 0.47, 0.64)
+      doorRef.current.style.opacity = o.toFixed(3)
+      doorRef.current.style.transform = `translateY(${((1 - o) * 18).toFixed(2)}px)`
     }
     if (finaleRef.current) {
-      const o = smoothstep(PUSHIN_START + 0.02, 0.97, p)
+      // Interior orbit — settles in as the orbit opens and holds to the end.
+      const o = smoothstep(0.7, 0.82, p)
       finaleRef.current.style.opacity = o.toFixed(3)
       finaleRef.current.style.transform = `translateY(${((1 - o) * 18).toFixed(2)}px)`
     }
@@ -157,6 +174,14 @@ export default function FlythroughSection() {
               </ul>
             </div>
           ))}
+          {INTERIOR_BEATS.map((beat) => (
+            <div key={beat.id}>
+              <p className="eyebrow-he mb-3">{beat.eyebrow}</p>
+              <h3 className="font-display text-2xl font-light text-sand">
+                {beat.title}
+              </h3>
+            </div>
+          ))}
         </div>
       </section>
     )
@@ -169,9 +194,6 @@ export default function FlythroughSection() {
         heightVh={PIN_HEIGHT_VH}
         scrub={SCRUB_WEIGHT}
         onProgress={handleProgress}
-        pushInStart={PUSHIN_START}
-        pushInScale={PUSHIN_SCALE}
-        pushInOrigin={PUSHIN_ORIGIN}
       >
         {/* legibility scrim + day→dusk deepening */}
         <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-ink/30" />
@@ -183,17 +205,6 @@ export default function FlythroughSection() {
             opacity: 0,
             background:
               'linear-gradient(180deg, rgba(20,30,45,0.35) 0%, rgba(10,20,22,0.15) 40%, rgba(200,120,60,0.10) 78%, rgba(6,16,15,0.55) 100%)',
-          }}
-        />
-        {/* push-in vignette — dark glass closing in on the penthouse crown */}
-        <div
-          ref={pushVignetteRef}
-          aria-hidden="true"
-          className="absolute inset-0"
-          style={{
-            opacity: 0,
-            background:
-              'radial-gradient(125% 95% at 50% 20%, transparent 32%, rgba(6,14,16,0.34) 68%, rgba(4,10,11,0.82) 100%)',
           }}
         />
 
@@ -231,15 +242,28 @@ export default function FlythroughSection() {
           </div>
         ))}
 
-        {/* finale caption — settles in as the push-in reaches the penthouse */}
+        {/* door-crossing caption — through the glass doors, home */}
+        <div
+          ref={doorRef}
+          className="absolute inset-x-0 top-[38vh] text-center will-change-transform"
+          style={{ opacity: 0 }}
+        >
+          <p className="eyebrow-he">{INTERIOR_BEATS[0].eyebrow}</p>
+          <h2 className="mx-auto mt-4 max-w-[86vw] font-display text-[clamp(2rem,5.2vw,4rem)] font-light leading-tight text-sand">
+            {INTERIOR_BEATS[0].title}
+          </h2>
+          <div className="mx-auto mt-6 h-px w-24 bg-gold/70" />
+        </div>
+
+        {/* finale caption — settles in as the interior orbit opens */}
         <div
           ref={finaleRef}
           className="absolute inset-x-0 top-[38vh] text-center will-change-transform"
           style={{ opacity: 0 }}
         >
-          <p className="eyebrow-he">הפנטהאוז</p>
+          <p className="eyebrow-he">{INTERIOR_BEATS[1].eyebrow}</p>
           <h2 className="mx-auto mt-4 max-w-[86vw] font-display text-[clamp(2rem,5.2vw,4rem)] font-light leading-tight text-sand">
-            הבית שלך מעל הכנרת
+            {INTERIOR_BEATS[1].title}
           </h2>
           <div className="mx-auto mt-6 h-px w-24 bg-gold/70" />
         </div>
